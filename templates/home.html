@@ -1,10 +1,216 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <title>$Title$</title>
-</head>
-<body>
-$END$
-</body>
-</html>
+{% extends "base.html" %}
+
+{% block title %}Query Configuration | MacroPulse{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-lg-10">
+        <div class="text-center mb-4">
+            <h2 class="fw-bold text-dark tracking-tight">Global Economic Intelligence</h2>
+            <p class="text-muted">Configure comparative peer analytics or inspect single-economy metric correlations.</p>
+        </div>
+
+        <form action="/analyze" method="POST" id="analyticsForm">
+            <!-- 1. Country Selection Panel -->
+            <div class="card p-4 mb-4">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <h5 class="fw-semibold mb-0">
+                        <i class="bi bi-globe-americas me-2 text-primary"></i>1. Select Economies
+                    </h5>
+                    <span id="countryCountBadge" class="badge bg-secondary">0 selected</span>
+                </div>
+                <p class="text-muted small">Select <strong>1 country</strong> for deep-dive correlation analysis, or <strong>2 to 5 countries</strong> for comparative trajectory benchmarking.</p>
+
+                <div class="row g-2 mb-3">
+                    <!-- Regional Presets -->
+                    <div class="col-12 mb-2">
+                        <span class="small text-secondary me-2">Quick Regional Focus:</span>
+                        <button type="button" class="btn btn-sm btn-outline-secondary" onclick="selectPreset(['NGA', 'GHA', 'KEN', 'ZAF'])">West & East Africa</button>
+                        <button type="button" class="btn btn-sm btn-outline-secondary" onclick="selectPreset(['BRA', 'MEX', 'ARG', 'COL'])">Latin America</button>
+                        <button type="button" class="btn btn-sm btn-outline-secondary" onclick="selectPreset(['VNM', 'IDN', 'MYS', 'THA'])">ASEAN Emerging</button>
+                        <button type="button" class="btn btn-sm btn-link text-decoration-none text-danger" onclick="clearCountries()">Clear All</button>
+                    </div>
+
+                    <!-- Peer Checkbox Roster -->
+                    <div class="col-md-3 col-6">
+                        <div class="form-check p-2 border rounded">
+                            <input class="form-check-input country-check" type="checkbox" name="countries" value="NGA" id="c_nga">
+                            <label class="form-check-label w-100" for="c_nga">Nigeria (NGA)</label>
+                        </div>
+                    </div>
+                    <div class="col-md-3 col-6">
+                        <div class="form-check p-2 border rounded">
+                            <input class="form-check-input country-check" type="checkbox" name="countries" value="GHA" id="c_gha">
+                            <label class="form-check-label w-100" for="c_gha">Ghana (GHA)</label>
+                        </div>
+                    </div>
+                    <div class="col-md-3 col-6">
+                        <div class="form-check p-2 border rounded">
+                            <input class="form-check-input country-check" type="checkbox" name="countries" value="KEN" id="c_ken">
+                            <label class="form-check-label w-100" for="c_ken">Kenya (KEN)</label>
+                        </div>
+                    </div>
+                    <div class="col-md-3 col-6">
+                        <div class="form-check p-2 border rounded">
+                            <input class="form-check-input country-check" type="checkbox" name="countries" value="ZAF" id="c_zaf">
+                            <label class="form-check-label w-100" for="c_zaf">South Africa (ZAF)</label>
+                        </div>
+                    </div>
+                    <div class="col-md-3 col-6">
+                        <div class="form-check p-2 border rounded">
+                            <input class="form-check-input country-check" type="checkbox" name="countries" value="EGY" id="c_egy">
+                            <label class="form-check-label w-100" for="c_egy">Egypt (EGY)</label>
+                        </div>
+                    </div>
+                    <div class="col-md-3 col-6">
+                        <div class="form-check p-2 border rounded">
+                            <input class="form-check-input country-check" type="checkbox" name="countries" value="RWA" id="c_rwa">
+                            <label class="form-check-label w-100" for="c_rwa">Rwanda (RWA)</label>
+                        </div>
+                    </div>
+                    <div class="col-md-3 col-6">
+                        <div class="form-check p-2 border rounded">
+                            <input class="form-check-input country-check" type="checkbox" name="countries" value="BRA" id="c_bra">
+                            <label class="form-check-label w-100" for="c_bra">Brazil (BRA)</label>
+                        </div>
+                    </div>
+                    <div class="col-md-3 col-6">
+                        <div class="form-check p-2 border rounded">
+                            <input class="form-check-input country-check" type="checkbox" name="countries" value="IND" id="c_ind">
+                            <label class="form-check-label w-100" for="c_ind">India (IND)</label>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 2. Metric Parameters -->
+            <div class="card p-4 mb-4">
+                <h5 class="fw-semibold mb-3">
+                    <i class="bi bi-sliders me-2 text-primary"></i>2. Indicator & Correlation Setup
+                </h5>
+
+                <div class="row g-3">
+                    <!-- Base Metric -->
+                    <div class="col-md-6">
+                        <label for="primaryMetric" class="form-label fw-medium">Primary Indicator <span class="text-danger">*</span></label>
+                        <select class="form-select" id="primaryMetric" name="primary_metric" required>
+                            <option value="NY.GDP.MKTP.KD.ZG" selected>GDP Growth (Annual %)</option>
+                            <option value="NY.GDP.PCAP.CD">GDP per Capita (Current US$)</option>
+                            <option value="FP.CPI.TOTL.ZG">Inflation, Consumer Prices (Annual %)</option>
+                            <option value="SL.UEM.TOTL.ZS">Unemployment (% of Total Labor Force)</option>
+                            <option value="IT.NET.USER.ZS">Internet Usage (% of Population)</option>
+                            <option value="BX.KLT.DINV.WD.GD.ZS">Foreign Direct Investment, Net Inflows (% of GDP)</option>
+                            <option value="SP.DYN.LE00.IN">Life Expectancy at Birth (Years)</option>
+                        </select>
+                        <div class="form-text">Used as the core line chart comparison or the X-axis for correlation.</div>
+                    </div>
+
+                    <!-- Secondary Metric (Single-country correlation only) -->
+                    <div class="col-md-6">
+                        <label for="secondaryMetric" class="form-label fw-medium d-flex justify-content-between">
+                            <span>Secondary Indicator (Y-Axis)</span>
+                            <span id="corrModeBadge" class="badge bg-light text-muted border">Single-Country Mode Only</span>
+                        </label>
+                        <select class="form-select" id="secondaryMetric" name="secondary_metric" disabled>
+                            <option value="">-- Disabled for Peer Comparison --</option>
+                            <option value="FP.CPI.TOTL.ZG" selected>Inflation, Consumer Prices (Annual %)</option>
+                            <option value="NY.GDP.MKTP.KD.ZG">GDP Growth (Annual %)</option>
+                            <option value="SL.UEM.TOTL.ZS">Unemployment (% of Total Labor Force)</option>
+                            <option value="BX.KLT.DINV.WD.GD.ZS">Foreign Direct Investment (% of GDP)</option>
+                            <option value="IT.NET.USER.ZS">Internet Usage (% of Population)</option>
+                        </select>
+                        <div class="form-text" id="secondaryMetricHelp">Enable by selecting exactly 1 country above.</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 3. Time Horizon & Advanced Options -->
+            <div class="card p-4 mb-4">
+                <h5 class="fw-semibold mb-3">
+                    <i class="bi bi-calendar-range me-2 text-primary"></i>3. Time Horizon
+                </h5>
+                <div class="row g-3 align-items-center">
+                    <div class="col-md-4">
+                        <label for="startYear" class="form-label fw-medium">Start Year</label>
+                        <input type="number" class="form-control" id="startYear" name="start_year" value="2010" min="1980" max="2025">
+                    </div>
+                    <div class="col-md-4">
+                        <label for="endYear" class="form-label fw-medium">End Year</label>
+                        <input type="number" class="form-control" id="endYear" name="end_year" value="2024" min="1985" max="2025">
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label fw-medium">Missing Value Strategy</label>
+                        <select class="form-select" name="interpolation">
+                            <option value="forward_fill" selected>Forward-Fill (Latest Available)</option>
+                            <option value="drop">Drop Missing Intersections</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <div class="d-grid mb-5">
+                <button type="submit" id="submitBtn" class="btn btn-primary btn-lg shadow-sm py-3 fw-semibold" disabled>
+                    <i class="bi bi-cpu me-2"></i>Generate Economic Intelligence Report
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    const checkboxes = document.querySelectorAll('.country-check');
+    const badge = document.getElementById('countryCountBadge');
+    const submitBtn = document.getElementById('submitBtn');
+    const secondaryMetric = document.getElementById('secondaryMetric');
+    const corrBadge = document.getElementById('corrModeBadge');
+    const secondaryHelp = document.getElementById('secondaryMetricHelp');
+
+    function updateFormState() {
+        const selected = Array.from(checkboxes).filter(c => c.checked);
+        const count = selected.length;
+        badge.textContent = `${count} selected`;
+
+        if (count === 0) {
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = `<i class="bi bi-cpu me-2"></i>Select At Least 1 Country`;
+            secondaryMetric.disabled = true;
+            corrBadge.className = 'badge bg-light text-muted border';
+            corrBadge.textContent = 'Single-Country Mode Only';
+        } else if (count === 1) {
+            submitBtn.disabled = false;
+            submitBtn.className = 'btn btn-success btn-lg shadow-sm py-3 fw-semibold';
+            submitBtn.innerHTML = `<i class="bi bi-diagram-3 me-2"></i>Analyze Metric Correlation for ${selected[0].value}`;
+            secondaryMetric.disabled = false;
+            corrBadge.className = 'badge bg-success-subtle text-success border border-success-subtle';
+            corrBadge.textContent = 'Correlation Analysis Enabled';
+            secondaryHelp.textContent = 'Select second variable to calculate Pearson r and regression line.';
+        } else {
+            submitBtn.disabled = false;
+            submitBtn.className = 'btn btn-primary btn-lg shadow-sm py-3 fw-semibold';
+            submitBtn.innerHTML = `<i class="bi bi-bar-chart-line me-2"></i>Compare ${count} Peer Economies`;
+            secondaryMetric.disabled = true;
+            corrBadge.className = 'badge bg-secondary-subtle text-secondary border';
+            corrBadge.textContent = 'Multi-Peer Benchmarking Mode';
+            secondaryHelp.textContent = 'Disabled: Cross-country comparison tracks the primary indicator across all peers.';
+        }
+    }
+
+    function selectPreset(codes) {
+        checkboxes.forEach(cb => {
+            cb.checked = codes.includes(cb.value);
+        });
+        updateFormState();
+    }
+
+    function clearCountries() {
+        checkboxes.forEach(cb => cb.checked = false);
+        updateFormState();
+    }
+
+    checkboxes.forEach(cb => cb.addEventListener('change', updateFormState));
+    // Initial check
+    updateFormState();
+</script>
+{% endblock %}

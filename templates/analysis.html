@@ -1,10 +1,251 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <title>$Title$</title>
-</head>
-<body>
-$END$
-</body>
-</html>
+{% extends "base.html" %}
+
+{% block title %}Analysis Results | MacroPulse{% endblock %}
+
+{% block content %}
+<!-- Header Bar -->
+<div class="d-flex flex-wrap justify-content-between align-items-center border-bottom pb-3 mb-4 gap-3">
+    <div>
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb mb-1 small">
+                <li class="breadcrumb-item"><a href="/" class="text-decoration-none">Dashboard</a></li>
+                <li class="breadcrumb-item active">Analysis Output</li>
+            </ol>
+        </nav>
+        <h3 class="fw-bold mb-0 text-dark">
+            {% if is_single_country %}
+                <span class="text-primary">{{ country_name }}</span>: Bivariate Correlation & Trend Analysis
+            {% else %}
+                Peer Comparison: <span class="text-primary">{{ primary_metric_name }}</span>
+            {% endif %}
+        </h3>
+        <p class="text-secondary small mb-0">Horizon: {{ start_year }} - {{ end_year }} &bull; Source: World Bank Development Indicators</p>
+    </div>
+    <div class="d-flex gap-2">
+        <a href="/" class="btn btn-outline-secondary btn-sm"><i class="bi bi-arrow-counterclockwise me-1"></i>New Query</a>
+        <button class="btn btn-outline-primary btn-sm" onclick="window.print()"><i class="bi bi-printer me-1"></i>Export PDF</button>
+    </div>
+</div>
+
+{% if is_single_country %}
+<!-- ================= SINGLE COUNTRY CORRELATION VIEW ================= -->
+<div class="row g-4 mb-4">
+    <!-- Stat Cards -->
+    <div class="col-md-4">
+        <div class="card p-3 h-100">
+            <span class="text-muted small metric-badge">Pearson Correlation (r)</span>
+            <div class="d-flex align-items-baseline gap-2 mt-2">
+                <h2 class="fw-bold mb-0 {{ 'text-danger' if correlation_r < -0.3 else ('text-success' if correlation_r > 0.3 else 'text-secondary') }}">
+                    {{ "%.3f"|format(correlation_r) }}
+                </h2>
+                <span class="badge {{ 'bg-danger-subtle text-danger' if correlation_r < -0.3 else ('bg-success-subtle text-success' if correlation_r > 0.3 else 'bg-secondary-subtle text-secondary') }}">
+                    {{ correlation_strength }}
+                </span>
+            </div>
+            <p class="text-muted small mt-2 mb-0">{{ correlation_interpretation }}</p>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card p-3 h-100">
+            <span class="text-muted small metric-badge">Primary Metric Latest ({{ end_year }})</span>
+            <h2 class="fw-bold mb-0 text-dark mt-2">{{ primary_latest_val }}</h2>
+            <p class="text-muted small mt-2 mb-0">{{ primary_metric_name }}</p>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card p-3 h-100">
+            <span class="text-muted small metric-badge">Secondary Metric Latest ({{ end_year }})</span>
+            <h2 class="fw-bold mb-0 text-dark mt-2">{{ secondary_latest_val }}</h2>
+            <p class="text-muted small mt-2 mb-0">{{ secondary_metric_name }}</p>
+        </div>
+    </div>
+</div>
+
+<!-- Charts Row: Time Series vs Scatter Regression -->
+<div class="row g-4 mb-4">
+    <div class="col-lg-7">
+        <div class="card p-3 h-100">
+            <h6 class="fw-semibold mb-3"><i class="bi bi-clock-history me-2 text-primary"></i>Dual-Axis Historical Trajectory</h6>
+            <div id="dualAxisChart" style="height: 400px;"></div>
+        </div>
+    </div>
+    <div class="col-lg-5">
+        <div class="card p-3 h-100">
+            <h6 class="fw-semibold mb-3"><i class="bi bi-scatter me-2 text-primary"></i>OLS Indicator Regression</h6>
+            <div id="scatterChart" style="height: 400px;"></div>
+        </div>
+    </div>
+</div>
+
+{% else %}
+<!-- ================= MULTI-PEER BENCHMARK VIEW ================= -->
+<div class="row g-4 mb-4">
+    <!-- Main Comparison Chart -->
+    <div class="col-lg-8">
+        <div class="card p-3 h-100">
+            <div class="d-flex justify-content-between align-items-center mb-2">
+                <h6 class="fw-semibold mb-0"><i class="bi bi-graph-up me-2 text-primary"></i>Comparative Trajectory ({{ primary_metric_name }})</h6>
+                <span class="badge bg-light text-dark border">Time Series</span>
+            </div>
+            <div id="peerTrendChart" style="height: 420px;"></div>
+        </div>
+    </div>
+
+    <!-- Momentum / Velocity Leaderboard -->
+    <div class="col-lg-4">
+        <div class="card p-3 h-100">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h6 class="fw-semibold mb-0"><i class="bi bi-lightning-charge me-2 text-warning"></i>Velocity & Growth</h6>
+                <span class="badge bg-secondary-subtle text-secondary small">5-Yr Metric</span>
+            </div>
+            <p class="text-muted small">Which economies accelerated fastest over the period?</p>
+
+            <div class="list-group list-group-flush">
+                {% for item in momentum_rankings %}
+                <div class="list-group-item d-flex justify-content-between align-items-center px-0 py-2">
+                    <div>
+                        <span class="fw-bold me-2">{{ loop.index }}.</span>
+                        <span class="fw-semibold">{{ item.country_name }}</span>
+                        <div class="text-muted small">{{ item.country_code }}</div>
+                    </div>
+                    <div class="text-end">
+                        <span class="badge {{ 'bg-success' if item.velocity_value >= 0 else 'bg-danger' }}">
+                            {{ "+" if item.velocity_value > 0 else "" }}{{ "%.2f"|format(item.velocity_value) }}{{ item.unit }}
+                        </span>
+                        <div class="text-muted" style="font-size: 0.75rem;">{{ item.metric_type }}</div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Detailed Data Table -->
+<div class="card mb-4">
+    <div class="card-header bg-white py-3">
+        <h6 class="fw-semibold mb-0">Cross-Sectional Summary Statistics</h6>
+    </div>
+    <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0">
+            <thead class="table-light small">
+                <tr>
+                    <th>Country</th>
+                    <th>Code</th>
+                    <th>Baseline ({{ start_year }})</th>
+                    <th>Latest ({{ end_year }})</th>
+                    <th>Period Delta ($\Delta$)</th>
+                    <th>Standard Dev ($\sigma$)</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for row in peer_summary_table %}
+                <tr>
+                    <td class="fw-semibold">{{ row.country_name }}</td>
+                    <td><span class="badge bg-light text-dark border">{{ row.country_code }}</span></td>
+                    <td>{{ row.base_val }}</td>
+                    <td class="fw-bold">{{ row.latest_val }}</td>
+                    <td class="{{ 'text-success' if row.delta > 0 else 'text-danger' }}">
+                        {{ "+" if row.delta > 0 else "" }}{{ "%.2f"|format(row.delta) }}
+                    </td>
+                    <td>{{ "%.2f"|format(row.std_dev) }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+<script>
+    // Injected JSON payloads from the Python backend route
+    const chartDataPayload = {{ chart_payload | tojson | safe }};
+
+    {% if is_single_country %}
+    // 1. Dual-Axis Line Plot
+    const dualAxisTraces = [
+        {
+            x: chartDataPayload.years,
+            y: chartDataPayload.primary_series,
+            name: chartDataPayload.primary_label,
+            type: 'scatter',
+            mode: 'lines+markers',
+            line: { color: '#2563eb', width: 3 }
+        },
+        {
+            x: chartDataPayload.years,
+            y: chartDataPayload.secondary_series,
+            name: chartDataPayload.secondary_label,
+            yaxis: 'y2',
+            type: 'scatter',
+            mode: 'lines+markers',
+            line: { color: '#f59e0b', width: 2, dash: 'dot' }
+        }
+    ];
+
+    const dualAxisLayout = {
+        margin: { t: 20, r: 40, l: 40, b: 40 },
+        legend: { orientation: 'h', y: 1.15 },
+        xaxis: { title: 'Year' },
+        yaxis: { title: chartDataPayload.primary_label, titlefont: { color: '#2563eb' }, tickfont: { color: '#2563eb' } },
+        yaxis2: {
+            title: chartDataPayload.secondary_label,
+            titlefont: { color: '#f59e0b' },
+            tickfont: { color: '#f59e0b' },
+            overlaying: 'y',
+            side: 'right'
+        }
+    };
+    Plotly.newPlot('dualAxisChart', dualAxisTraces, dualAxisLayout, { responsive: true, displayModeBar: false });
+
+    // 2. Correlation Scatter + Regression line
+    const scatterTraces = [
+        {
+            x: chartDataPayload.primary_series,
+            y: chartDataPayload.secondary_series,
+            mode: 'markers',
+            type: 'scatter',
+            name: 'Annual Observation',
+            text: chartDataPayload.years,
+            marker: { size: 9, color: '#0f172a' }
+        },
+        {
+            x: chartDataPayload.trendline_x,
+            y: chartDataPayload.trendline_y,
+            mode: 'lines',
+            name: 'OLS Regression',
+            line: { color: '#ef4444', width: 2 }
+        }
+    ];
+
+    const scatterLayout = {
+        margin: { t: 20, r: 20, l: 40, b: 40 },
+        legend: { orientation: 'h', y: 1.15 },
+        xaxis: { title: chartDataPayload.primary_label },
+        yaxis: { title: chartDataPayload.secondary_label }
+    };
+    Plotly.newPlot('scatterChart', scatterTraces, scatterLayout, { responsive: true, displayModeBar: false });
+
+    {% else %}
+    // Peer Multi-Country Line Chart
+    const peerTraces = chartDataPayload.series.map(s => ({
+        x: s.years,
+        y: s.values,
+        name: s.country_name,
+        type: 'scatter',
+        mode: 'lines+markers',
+        line: { width: 2.5 }
+    }));
+
+    const peerLayout = {
+        margin: { t: 20, r: 20, l: 40, b: 40 },
+        legend: { orientation: 'h', y: 1.15 },
+        xaxis: { title: 'Year' },
+        yaxis: { title: chartDataPayload.metric_title }
+    };
+    Plotly.newPlot('peerTrendChart', peerTraces, peerLayout, { responsive: true, displayModeBar: false });
+    {% endif %}
+</script>
+{% endblock %}
